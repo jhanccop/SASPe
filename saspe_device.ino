@@ -34,7 +34,7 @@ ESP32Time rtc;
 
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = -18000;
-const int   daylightOffset_sec = 3600;
+const int   daylightOffset_sec = -18000;
 
 /*
   #include "RTClib.h"
@@ -44,11 +44,8 @@ const int   daylightOffset_sec = 3600;
 
 #include <WiFi.h>
 
-//const char* ssid = "Hora De Estudiar-2.4GHz";
-//const char* password = "colosenses3:20";
-
-String ssid = "Hora De Estudiar-2.4GHz";
-String password = "c0l053n5353:20";
+String ssid = "ssid";
+String password = "pass";
 
 WiFiClient client;
 #include <PubSubClient.h>
@@ -60,8 +57,8 @@ PubSubClient mqtt(client);
 //const char *broker = "broker.hivemq.com";
 //const int mqtt_port = 1883;
 
-const char *broker = "190.187.237.140";
-const int mqtt_port = 5007;
+//const char *broker = "";
+//const int mqtt_port = 1883;
 const char *mqtt_id = "saspe20";
 const char *mqtt_user = "saspe";
 const char *mqtt_pass = "sasperuclient";
@@ -87,8 +84,12 @@ double longitudE = 0;
 double latitudE = 0;
 double latencyE = 0;
 double distanceE = 0;
+double magnitudE = 0;
 String dateTimeE = "";
+String dateE = "";
+String timeE = "";
 boolean activateE = false;
+String s_idE = "";
 
 unsigned long now = 0;
 //unsigned long previousMillis = 0; // init millis wait to mqtt callback
@@ -147,8 +148,8 @@ void print_manintance(String text) {
   display.display();
 }
 
-String num2string(double n, int m) {
-  String temp = "-";
+String num2string(double n, int m, String text) {
+  String temp = text;
   if (n != 0) {
     temp = String(n, m);
   }
@@ -156,47 +157,40 @@ String num2string(double n, int m) {
 }
 
 /* ******************* PRINT LCD MAIN  ********************** */
-void print_main(boolean lcdSiren, String lcdLocation, String lcdIdEvent, double lcdLatitude, double lcdLongitude, double lcdDistance, double lcdLatency, String lcdDateTimeEvent) {
+void print_main(boolean lcdSiren, String lcdLocation, String lcdIdEvent, double lcdLatitude, double lcdLongitude, double lcdDistance, double lcdLatency, String lcdDateEvent, String lcdTimeEvent, double lcdMagnitudE) {
   String temp = "";
   display.clearDisplay();
   display.display();
 
+  // ---- Date time ----
   display.setCursor(0, 0);
   display.println(rtc.getTime("%y-%m-%d %H:%M"));
+  
+  // ---- Lat long device ----
+  temp = String(latitud) + ", " + String(longitud);
+  display.setCursor(0, 8);
+  display.println(temp);
 
-  //display.setCursor(48,0);
-  //display.println(".");
-  //int milliseconds = rtc.getMillis();
-  //display.setCursor(54,0);
-  //display.println(milliseconds);
-
+  // ---- Event + type ----
   if (lcdSiren) {
     display.setTextColor(WHITE, BLACK);
   }
-  display.setCursor(0, 8);
-  display.println(lcdLocation);
+  display.setCursor(5, 16);
+  display.println(lcdIdEvent);
   display.setTextColor(BLACK);
 
-  /*
-  temp = "Id:" + lcdIdEvent;
-  display.setCursor(0, 16);
-  display.println(temp);
-  */
-  
-  temp = String(latitud) + ", " + String(longitud);
-  display.setCursor(0, 16);
-  display.println(temp);
-
-  temp = num2string(lcdLatitude, 2) + ", " + num2string(lcdLongitude, 2);
+  // ---- Magnitud y distancia
+  temp = num2string(lcdMagnitudE, 2, "mag") + " @ " + num2string(lcdDistance, 2, "dist ") + "Km";
   display.setCursor(0, 24);
   display.println(temp);
 
-  temp = "d:" + num2string(lcdDistance, 1) + " l:" + num2string(lcdLatency, 0);
+  // ---- Date event
   display.setCursor(0, 32);
-  display.println(temp);
+  display.println(lcdDateEvent);
 
+  // ---- Time event
   display.setCursor(0, 40);
-  display.println(lcdDateTimeEvent);
+  display.println(lcdTimeEvent);
 
   display.display();
 }
@@ -282,7 +276,7 @@ void setting_rtc() {
   strftime(ty, 5, "%Y", &timeinfo);
   int tyear = String(ty).toInt();
 
-  rtc.setTime(tsecond, tminute, thour-2, tday, tmonth, tyear);
+  rtc.setTime(tsecond, tminute, thour, tday, tmonth, tyear);
 
   char dt[60];
   strftime(dt, 61, "%A, %B %d %Y %H:%M:%S", &timeinfo);
@@ -347,7 +341,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     location = s.separa(location, '/', 1);
 
-    print_main(activateE, location, idE, latitudE, longitudE, distanceE, latencyE, dateTimeE);
+    print_main(activateE, location, idE, latitudE, longitudE, distanceE, latencyE, dateE, timeE, magnitudE);
 
   } else if (topic_in == "saspe/sirene/test" || topic_in == "saspe/sirene/main") {
 
@@ -355,12 +349,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     const char* p_idE = doc["id"];
     const char* p_fecha = doc["fecha"];
-
     dateTimeE = String(p_fecha);
-    dateTimeE = s.separa(dateTimeE, ' ', 1);
+
+    dateE = s.separa(dateTimeE, ' ', 0);
+    timeE = s.separa(dateTimeE, ' ', 1);
+
     latitudE = doc["latitud"];
     longitudE = doc["longitud"];
-    double magnitudE = doc["magnitud"];
+    magnitudE = doc["magnitud"];
     double impactoE = doc["impacto"];
 
     activateE = active_siren(longitudE, latitudE, longitud, latitud, impactoE);
@@ -377,7 +373,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     latencyE = time_arrive - seconds_send;
     if (latencyE < 0 ) latencyE = latencyE + 60;
 
-    print_main(activateE, location, idE, latitudE, longitudE, distanceE, latencyE, dateTimeE);
+    s_idE = idE + "-";
+    if(s.separa(topic_in, '/', 2) == "main"){
+      s_idE += "M";
+    }else if (s.separa(topic_in, '/', 2) == "test"){
+      s_idE += "T";
+    }
+
+    print_main(activateE, location, s_idE, latitudE, longitudE, distanceE, latencyE, dateE, timeE, magnitudE);
 
     //print_text(".956", 23, 2);
 
@@ -680,7 +683,7 @@ void setup() {
   display.clearDisplay();
   display.display();
 
-  //display.setTextColor(WHITE, BLACK);
+  //display.setTextColor(WHITE, BLACK); 
   display.invertDisplay(true);
   display.setCursor(0, 15);
   display.setTextSize(2);
@@ -754,11 +757,9 @@ void loop()
 
   } else if (millis() > time_now + 5000) {
     activateE = false;
-    
-    
     //ledcWriteTone(0, 0);
     time_now = millis();
-    print_main(activateE, location, idE, latitudE, longitudE, distanceE, latencyE, dateTimeE);
+    print_main(activateE, location, s_idE, latitudE, longitudE, distanceE, latencyE, dateE, timeE, magnitudE);
     //print_datetime(true);
   }
 
