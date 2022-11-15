@@ -56,18 +56,11 @@ PubSubClient mqtt(client);
 
 const char *broker = "broker.hivemq.com";
 const int mqtt_port = 1883;
-const char *mqtt_id = "saspe20";
-const char *mqtt_user = "saspe";
-const char *mqtt_pass = "sasperuclient";
+const char *mqtt_id = "ID_DEVICE";
+const char *mqtt_user = "USER";
+const char *mqtt_pass = "PASS";
 
-//const char* topicData_pub = "sasp3/sirenData";
-//const char* topicInit_pub = "sasp3/init";
 const char* topicSirenStatus_subs = "saspe/sirene/#";
-//const char* topicSirenStatus_subs = "peru/ancash/huaylas/caraz/#";
-
-//long lastMsg = 0;
-//char msg[50];
-//char msg_c[50];
 
 /* ---------------------- Variables de dispositivo ----------------------*/
 String idDevice = "saspe16";
@@ -89,7 +82,7 @@ boolean activateE = false;
 String s_idE = "";
 
 unsigned long now = 0;
-//unsigned long previousMillis = 0; // init millis wait to mqtt callback
+
 //const long interval = 5000; // secont wait to mqtt callback
 
 
@@ -693,9 +686,6 @@ void setup() {
   display.invertDisplay(false);
   display.display();
 
-  //ledcSetup(2000, 0, 8);
-  //ledcAttachPin(pin_buzzer, 0);
-
   digitalWrite(pin_buzzer, LOW);
   delay(100);
   digitalWrite(pin_buzzer, HIGH);
@@ -704,8 +694,6 @@ void setup() {
   setup_bluetooth();
 
   String input_payload = "";
-
-  //Serial.println(input_payload);
 
   setup_wifi();
 
