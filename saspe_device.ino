@@ -21,7 +21,7 @@ const int long_address = 80;
 #include <Adafruit_PCD8544.h>
 
 Adafruit_PCD8544 display = Adafruit_PCD8544(18, 23, 4, 15, 2);
-const int contrastValue = 45;
+const int contrastValue = 50;
 
 #define pin_LCD     14
 #define pin_buzzer  25
@@ -54,11 +54,8 @@ PubSubClient mqtt(client);
 
 /* settings MQTT */
 
-//const char *broker = "broker.hivemq.com";
-//const int mqtt_port = 1883;
-
-//const char *broker = "";
-//const int mqtt_port = 1883;
+const char *broker = "broker.hivemq.com";
+const int mqtt_port = 1883;
 const char *mqtt_id = "saspe20";
 const char *mqtt_user = "saspe";
 const char *mqtt_pass = "sasperuclient";
@@ -180,7 +177,7 @@ void print_main(boolean lcdSiren, String lcdLocation, String lcdIdEvent, double 
   display.setTextColor(BLACK);
 
   // ---- Magnitud y distancia
-  temp = num2string(lcdMagnitudE, 2, "mag") + " @ " + num2string(lcdDistance, 2, "dist ") + "Km";
+  temp = num2string(lcdMagnitudE, 2, "mag") + "->" + num2string(lcdDistance, 2, "dist") + "Km";
   display.setCursor(0, 24);
   display.println(temp);
 
@@ -359,6 +356,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     magnitudE = doc["magnitud"];
     double impactoE = doc["impacto"];
 
+    impactoE = 300;
+    
     activateE = active_siren(longitudE, latitudE, longitud, latitud, impactoE);
 
     if (activateE && idE != String(p_idE)) {
@@ -373,7 +372,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     latencyE = time_arrive - seconds_send;
     if (latencyE < 0 ) latencyE = latencyE + 60;
 
-    s_idE = idE + "-";
+    s_idE = String(p_idE) + "-";
     if(s.separa(topic_in, '/', 2) == "main"){
       s_idE += "M";
     }else if (s.separa(topic_in, '/', 2) == "test"){
@@ -757,8 +756,8 @@ void loop()
 
   } else if (millis() > time_now + 5000) {
     activateE = false;
-    //ledcWriteTone(0, 0);
     time_now = millis();
+    digitalWrite(pin_LCD, LOW);
     print_main(activateE, location, s_idE, latitudE, longitudE, distanceE, latencyE, dateE, timeE, magnitudE);
     //print_datetime(true);
   }
